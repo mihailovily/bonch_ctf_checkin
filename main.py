@@ -41,17 +41,19 @@ def recieve_checkin(message):
 def check_code(message):
     connection = sqlite3.connect("my_database.db")
     cursor = connection.cursor()
-    usr_id = str(message.from_user.id)
     flag = message.text
-    otmetka = False
     cursor.execute(
         "SELECT is_active FROM ActiveCheckins WHERE code IS '{code}'".format(code=flag)
     )
     result = cursor.fetchall()
+    print(result[0][0])
     bot.reply_to(message, "Проверка кода...")
     if result != []:
-        bot.reply_to(message, "Отлично, секунду...")
-        checkin_user(message)
+        if result[0][0] == 1:
+            bot.reply_to(message, "Отлично, секунду...")
+            checkin_user(message)
+        else:
+            bot.reply_to(message, "Занятие завершено")
     else:
         bot.reply_to(message, "Код отметки не подходит")
 
@@ -79,11 +81,33 @@ def checkin_user(message):
             "SELECT visits FROM Users WHERE tgid IS '{tgid}'".format(tgid=str(usr_id))
         )
         user_visits = int(cursor.fetchall()[0][0])
-        cursor.execute("UPDATE Users SET visits = ? WHERE tgid = ?", (user_visits + 1, str(usr_id)))
-    bot.reply_to(message, "Записали на занятие")
+        cursor.execute(
+            "UPDATE Users SET visits = ? WHERE tgid = ?", (user_visits + 1, str(usr_id))
+        )
+    # локальная отметка
+    cursor.execute(
+        "SELECT * FROM '{table}' WHERE tgid IS '{tgid}'".format(
+            tgid=str(usr_id), table=message.text
+        )
+    )
+    users = cursor.fetchall()
+    if users == []:
+        print("nouser locally")
+        cursor.execute(
+            "INSERT INTO '{table}' (tgid, username, name) VALUES ('{tgid}', '{username}', '{name}')".format(
+                table=str(message.text),
+                tgid=str(usr_id),
+                username=str(usr_username),
+                name=str(usr_first),
+            )
+        )
+        
+    else:
+        print("exists locally")
 
     connection.commit()
     connection.close()
+    bot.reply_to(message, "Отлично, записали на занятие")
 
 
 def is_user_exists(tgid, dbname):
@@ -114,6 +138,7 @@ def admin_razvilka(message):
         bot.register_next_step_handler(message, start_check)
     elif message.text == "2":
         bot.reply_to(message, "Занятие с каким кодом необходимо завершить?")
+        bot.register_next_step_handler(message, finish_check)
 
 
 def start_check(message):
@@ -143,6 +168,10 @@ def start_check(message):
         bot.send_message(usr_id, "Занято")
     connection.commit()
     connection.close()
+
+
+def finish_check(message):
+    pass
 
 
 # если сообщение не распознано
