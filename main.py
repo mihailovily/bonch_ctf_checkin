@@ -6,15 +6,15 @@ import random
 from datetime import datetime
 
 
+# инит
 token = open("tokens/telegram.txt").readline()
 admin = open("tokens/admin.txt").readline()
-bot = telebot.TeleBot(token)  # инит
+bot = telebot.TeleBot(token)
 
 
 @bot.message_handler(commands=["start", "help"])  # старт
 def send_welcome(message):
     usr_id = str(message.from_user.id)  # userid
-    usr_name = str(message.from_user.first_name)  # имя юзера
     keyboard = types.ReplyKeyboardMarkup(True)  # генерируем клаву
     butt_check = types.KeyboardButton(text="Отметиться")
     butt_visits = types.KeyboardButton(text="Мои посещения")
@@ -40,20 +40,21 @@ def recieve_checkin(message):
     # кушаем ответ, пихаем в след функцию
 
 
+# проверка на наличие кода в базе
 def check_code(message):
     connection = sqlite3.connect("my_database.db")
     cursor = connection.cursor()
-    flag = message.text
     cursor.execute(
-        "SELECT is_active FROM ActiveCheckins WHERE code IS '{code}'".format(code=flag)
+        "SELECT is_active FROM ActiveCheckins WHERE code IS '{code}'".format(
+            code=message.text
+        )
     )
     result = cursor.fetchall()
-    # print(result[0][0])
     bot.reply_to(message, "Проверка кода...")
     if result != []:
         if result[0][0] == 1:
             bot.reply_to(message, "Отлично, секунду...")
-            checkin_user(message)
+            checkin_user(message)  # если код правильный, то чекиним пользователя
         else:
             bot.reply_to(message, "Занятие завершено")
     else:
@@ -64,7 +65,6 @@ def checkin_user(message):
     connection = sqlite3.connect("my_database.db")
     cursor = connection.cursor()
     usr_id = message.from_user.id
-    usr_first = message.from_user.first_name
     usr_username = message.from_user.username
     # глобальная отметка
     cursor.execute(
@@ -75,7 +75,7 @@ def checkin_user(message):
         # print("nouser globally")
         cursor.execute(
             "INSERT INTO Users (tgid, username, name, visits) VALUES (?, ?, ?, ?)",
-            (str(usr_id), str(usr_username), str(usr_first), 1),
+            (str(usr_id), str(usr_username), str(message.from_user.first_name), 1),
         )
     else:
         # print("exists")
@@ -108,13 +108,9 @@ def checkin_user(message):
                 table=str(local_table_name),
                 tgid=str(usr_id),
                 username=str(usr_username),
-                name=str(usr_first),
+                name=str(message.from_user.first_name),
             )
         )
-
-    else:
-        pass
-        # print("exists locally")
 
     connection.commit()
     connection.close()
@@ -227,17 +223,23 @@ def finish_check(message):
         )
         local_table_name = cursor.fetchall()[0][0]
         cursor.execute(
-                    "SELECT * FROM '{tablitsa}'".format(
-                        tablitsa=str(local_table_name)
-                    )
-                )
+            "SELECT * FROM '{tablitsa}'".format(tablitsa=str(local_table_name))
+        )
         users_finally = cursor.fetchall()
-        otchet = ''
+        otchet = ""
         for k in users_finally:
-            otchet += '{n}. id: {id}, username: {username}, name: {name}\n'.format(n=k[0], id=k[1], username=k[2], name=k[3])
-            
-        bot.send_message(usr_id, "Занятие {date} с кодом {code} успешно завершено. Всего отметившихся: {visited}".format(date=str(local_table_name), code=code_check, visited=str(len(users_finally))))
-        bot.send_message(usr_id, otchet)    
+            otchet += "{n}. id: {id}, username: {username}, name: {name}\n".format(
+                n=k[0], id=k[1], username=k[2], name=k[3]
+            )
+        bot.send_message(
+            usr_id,
+            "Занятие {date} с кодом {code} успешно завершено. Всего отметившихся: {visited}".format(
+                date=str(local_table_name),
+                code=code_check,
+                visited=str(len(users_finally)),
+            ),
+        )
+        bot.send_message(usr_id, otchet)
     else:
         bot.send_message(usr_id, "Такого не найдено")
     connection.commit()
@@ -250,5 +252,4 @@ def echo_all(message):
     bot.reply_to(message, "Я тебя немного не понял. Давай еще раз")
 
 
-if __name__ == "__main__":
-    bot.infinity_polling()
+bot.infinity_polling()
