@@ -117,10 +117,6 @@ def checkin_user(message):
     bot.reply_to(message, "Отлично, записал на занятие")
 
 
-def is_user_exists(tgid, dbname):
-    pass
-
-
 @bot.message_handler(commands=["visits"])
 @bot.message_handler(regexp="Мои посещения")
 def my_visits(message):
@@ -151,7 +147,7 @@ def admin_check(message):
 def admin_razvilka(message):
     if message.text == "1":
         bot.reply_to(message, "Подтверди намерения")
-        bot.register_next_step_handler(message, start_check)
+        bot.register_next_step_handler(message, start_para)
     elif message.text == "2":
         connection = sqlite3.connect("my_database.db")
         cursor = connection.cursor()
@@ -160,10 +156,10 @@ def admin_razvilka(message):
             cursor.fetchall()
         )
         bot.reply_to(message, to_answer)
-        bot.register_next_step_handler(message, finish_check)
+        bot.register_next_step_handler(message, finish_para)
 
 
-def start_check(message):
+def start_para(message):
     if str(message.text) in "Yy":
         date_check = datetime.today().strftime("%d.%m.%Y")
         code_check = gen_auth_code()
@@ -194,14 +190,7 @@ def start_check(message):
         connection.close()
 
 
-def gen_auth_code():
-    s = ""
-    for i in range(5):
-        s += random.choice("QWERTYUIPASDFGHJKLZXCVBNM123456789")
-    return s
-
-
-def finish_check(message):
+def finish_para(message):
     code_check = message.text
     usr_id = str(message.from_user.id)
     connection = sqlite3.connect("my_database.db")
@@ -245,6 +234,11 @@ def finish_check(message):
     connection.commit()
     connection.close()
 
+def gen_auth_code():
+    s = ""
+    for i in range(5):
+        s += random.choice("QWERTYUIPASDFGHJKLZXCVBNM123456789")
+    return s
 
 # если сообщение не распознано
 @bot.message_handler(func=lambda message: True)
