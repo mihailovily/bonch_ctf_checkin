@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "bonchctf-checkin"
+version = "1.0"
+description = "Bot for checking in bonchCTF"
+authors = ["Ilya <mihailovily@tuta.io>"]
+license = "GPL-v3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pytelegrambotapi = "^4.18.1"
+pymorphy2 = "^0.9.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
